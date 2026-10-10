@@ -665,33 +665,14 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
 
         {/* ── Scorecard table (horizontal scroll) ── */}
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: 680, width: '100%', fontSize: 11 }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 720, width: '100%', fontSize: 11 }}>
             <thead>
+              {/* Hole numbers */}
               <tr style={{ background: '#f7f4ee' }}>
                 <td style={tdLeft}>Hole</td>
                 {COURSE.par.map((_, i) => (
-                  <td key={i} style={{ ...tdCenter, background: i === 8 ? '#eee' : undefined, fontWeight: 700, color: '#444', fontSize: 10, position: 'relative' }}>
+                  <td key={i} style={{ ...tdCenter, fontWeight: 700, color: '#444', fontSize: 10, background: i === 8 ? '#ece8e0' : undefined }}>
                     {i + 1}
-                    {/* Stroke dot indicators */}
-                    {isBB && (() => {
-                      const kevDots = (kevPlayersStrokes || []).filter(arr => arr[i] > 0).length;
-                      const gDots   = (gPlayersStrokes   || []).filter(arr => arr[i] > 0).length;
-                      return (kevDots > 0 || gDots > 0) ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
-                          {[...Array(kevDots)].map((_, d) => <div key={`k${d}`} style={{ width: 5, height: 5, borderRadius: '50%', background: KEV_COLOR }} />)}
-                          {[...Array(gDots)].map((_, d) => <div key={`g${d}`} style={{ width: 5, height: 5, borderRadius: '50%', background: G_COLOR }} />)}
-                        </div>
-                      ) : null;
-                    })()}
-                    {!isBB && (() => {
-                      const ks = kevSingStrokes[i]; const gs = gSingStrokes[i];
-                      return (ks > 0 || gs > 0) ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
-                          {ks > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: KEV_COLOR }} />}
-                          {gs > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: G_COLOR }} />}
-                        </div>
-                      ) : null;
-                    })()}
                   </td>
                 ))}
               </tr>
@@ -704,75 +685,193 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
                 {COURSE.handicap.map((h, i) => <td key={i} style={{ ...tdCenter, color: '#999', fontSize: 9 }}>{h}</td>)}
               </tr>
               <tr style={{ background: '#e8f0e8' }}>
-                <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 700 }}>Par</td>
-                {COURSE.par.map((p, i) => <td key={i} style={{ ...tdCenter, color: G_COLOR, fontWeight: 700 }}>{p}</td>)}
+                <td style={{ ...tdLeft, color: '#2d6a4f', fontWeight: 700 }}>Par</td>
+                {COURSE.par.map((p, i) => <td key={i} style={{ ...tdCenter, color: '#2d6a4f', fontWeight: 700 }}>{p}</td>)}
               </tr>
             </thead>
             <tbody>
-              {/* KEV score row */}
-              <tr style={{ background: '#eef3ff' }}>
-                <td style={{ ...tdLeft, color: KEV_COLOR, fontWeight: 700 }}>
-                  {isBB ? 'Kev' : match.kevPlayer.split(' ')[0]}
-                  {!isBB && match.kevStrokes > 0 && <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}> +{match.kevStrokes}</span>}
-                </td>
-                {COURSE.par.map((par, i) => {
-                  const val = local.kev[i];
-                  const num = val === '' ? null : parseInt(val, 10);
-                  const netNum = (!isBB && num != null) ? num - kevSingStrokes[i] : num;
-                  const hasStroke = !isBB && kevSingStrokes[i] > 0;
-                  const bg = num != null ? scoreColor(netNum, par) : '#fff';
-                  const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
-                  return (
-                    <td key={i} style={{ padding: '3px 2px', textAlign: 'center', background: bg }}>
-                      <input
-                        type="number" min="1" max="15"
-                        value={val}
-                        onChange={e => set('kev', i, e.target.value)}
-                        inputMode="numeric"
-                        style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${KEV_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
-                      />
-                      <div style={{ fontSize: 8, color: textCol, opacity: 0.8, marginTop: 1 }}>
-                        {num != null ? scoreLabel(netNum, par) : ''}
-                      </div>
-                      {hasStroke && num != null && (
-                        <div style={{ fontSize: 7, color: KEV_COLOR, fontWeight: 700 }}>→{netNum}</div>
-                      )}
+              {isBB ? (
+                <>
+                  {/* ── TEAM KEV: 2 player rows + best-net row ── */}
+                  <tr style={{ background: '#d0d9f0' }}>
+                    <td colSpan={19} style={{ padding: '3px 10px', fontSize: 9, fontWeight: 900, color: KEV_COLOR, letterSpacing: 2, textTransform: 'uppercase' }}>
+                      ■ TEAM KEV — enter best net score per hole
                     </td>
-                  );
-                })}
-              </tr>
-              {/* G score row */}
-              <tr style={{ background: '#edf7ee' }}>
-                <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 700 }}>
-                  {isBB ? 'G' : match.gPlayer.split(' ')[0]}
-                  {!isBB && match.gStrokes > 0 && <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}> +{match.gStrokes}</span>}
-                </td>
-                {COURSE.par.map((par, i) => {
-                  const val = local.g[i];
-                  const num = val === '' ? null : parseInt(val, 10);
-                  const netNum = (!isBB && num != null) ? num - gSingStrokes[i] : num;
-                  const hasStroke = !isBB && gSingStrokes[i] > 0;
-                  const bg = num != null ? scoreColor(netNum, par) : '#fff';
-                  const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
-                  return (
-                    <td key={i} style={{ padding: '3px 2px', textAlign: 'center', background: bg }}>
-                      <input
-                        type="number" min="1" max="15"
-                        value={val}
-                        onChange={e => set('g', i, e.target.value)}
-                        inputMode="numeric"
-                        style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${G_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
-                      />
-                      <div style={{ fontSize: 8, color: textCol, opacity: 0.8, marginTop: 1 }}>
-                        {num != null ? scoreLabel(netNum, par) : ''}
-                      </div>
-                      {hasStroke && num != null && (
-                        <div style={{ fontSize: 7, color: G_COLOR, fontWeight: 700 }}>→{netNum}</div>
-                      )}
+                  </tr>
+                  {match.kev.map((player, pi) => {
+                    const strokesArr = kevPlayersStrokes[pi];
+                    return (
+                      <tr key={player.name} style={{ background: pi === 0 ? '#eef2ff' : '#e8edff' }}>
+                        <td style={{ ...tdLeft, color: KEV_COLOR }}>
+                          <div style={{ fontWeight: 700 }}>{player.name}</div>
+                          <div style={{ fontSize: 8, color: '#888' }}>{player.strokes > 0 ? `+${player.strokes} strokes` : 'scratch'}</div>
+                        </td>
+                        {COURSE.par.map((par, i) => {
+                          const hasStroke = strokesArr[i] > 0;
+                          return (
+                            <td key={i} style={{ padding: '2px 1px', textAlign: 'center', background: hasStroke ? `${KEV_COLOR}18` : undefined, borderBottom: hasStroke ? `2px solid ${KEV_COLOR}` : undefined }}>
+                              {hasStroke && (
+                                <div style={{ fontSize: 7, fontWeight: 900, color: KEV_COLOR, lineHeight: 1, marginBottom: 1 }}>+1</div>
+                              )}
+                              <div style={{ fontSize: 9, color: '#aaa' }}>—</div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                  {/* Kev score entry row (best net) */}
+                  <tr style={{ background: '#dce6ff', borderTop: `2px solid ${KEV_COLOR}` }}>
+                    <td style={{ ...tdLeft, color: KEV_COLOR, fontWeight: 900 }}>
+                      <div>Best Net</div>
+                      <div style={{ fontSize: 7, color: '#888' }}>enter here ↓</div>
                     </td>
-                  );
-                })}
-              </tr>
+                    {COURSE.par.map((par, i) => {
+                      const val = local.kev[i];
+                      const num = val === '' ? null : parseInt(val, 10);
+                      const bg = num != null ? scoreColor(num, par) : '#fff';
+                      const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                      return (
+                        <td key={i} style={{ padding: '3px 1px', textAlign: 'center', background: bg }}>
+                          <input
+                            type="number" min="1" max="15"
+                            value={val}
+                            onChange={e => set('kev', i, e.target.value)}
+                            inputMode="numeric"
+                            style={{ width: 28, height: 30, textAlign: 'center', border: `1.5px solid ${KEV_COLOR}55`, borderRadius: 6, fontSize: 13, fontWeight: 900, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield', display: 'block', margin: '0 auto' }}
+                          />
+                          <div style={{ fontSize: 8, color: textCol, marginTop: 1 }}>
+                            {num != null ? scoreLabel(num, par) : ''}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* ── TEAM G: 2 player rows + best-net row ── */}
+                  <tr style={{ background: '#b7d9c0' }}>
+                    <td colSpan={19} style={{ padding: '3px 10px', fontSize: 9, fontWeight: 900, color: '#1a5c35', letterSpacing: 2, textTransform: 'uppercase' }}>
+                      ■ TEAM G — enter best net score per hole
+                    </td>
+                  </tr>
+                  {match.g.map((player, pi) => {
+                    const strokesArr = gPlayersStrokes[pi];
+                    return (
+                      <tr key={player.name} style={{ background: pi === 0 ? '#edf7ee' : '#e4f2e7' }}>
+                        <td style={{ ...tdLeft, color: G_COLOR }}>
+                          <div style={{ fontWeight: 700 }}>{player.name}</div>
+                          <div style={{ fontSize: 8, color: '#888' }}>{player.strokes > 0 ? `+${player.strokes} strokes` : 'scratch'}</div>
+                        </td>
+                        {COURSE.par.map((par, i) => {
+                          const strokesArr2 = gPlayersStrokes[pi];
+                          const hasStroke = strokesArr2[i] > 0;
+                          return (
+                            <td key={i} style={{ padding: '2px 1px', textAlign: 'center', background: hasStroke ? `${G_COLOR}18` : undefined, borderBottom: hasStroke ? `2px solid ${G_COLOR}` : undefined }}>
+                              {hasStroke && (
+                                <div style={{ fontSize: 7, fontWeight: 900, color: G_COLOR, lineHeight: 1, marginBottom: 1 }}>+1</div>
+                              )}
+                              <div style={{ fontSize: 9, color: '#aaa' }}>—</div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                  {/* G score entry row (best net) */}
+                  <tr style={{ background: '#cce8d4', borderTop: `2px solid ${G_COLOR}` }}>
+                    <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 900 }}>
+                      <div>Best Net</div>
+                      <div style={{ fontSize: 7, color: '#888' }}>enter here ↓</div>
+                    </td>
+                    {COURSE.par.map((par, i) => {
+                      const val = local.g[i];
+                      const num = val === '' ? null : parseInt(val, 10);
+                      const bg = num != null ? scoreColor(num, par) : '#fff';
+                      const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                      return (
+                        <td key={i} style={{ padding: '3px 1px', textAlign: 'center', background: bg }}>
+                          <input
+                            type="number" min="1" max="15"
+                            value={val}
+                            onChange={e => set('g', i, e.target.value)}
+                            inputMode="numeric"
+                            style={{ width: 28, height: 30, textAlign: 'center', border: `1.5px solid ${G_COLOR}55`, borderRadius: 6, fontSize: 13, fontWeight: 900, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield', display: 'block', margin: '0 auto' }}
+                          />
+                          <div style={{ fontSize: 8, color: textCol, marginTop: 1 }}>
+                            {num != null ? scoreLabel(num, par) : ''}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </>
+              ) : (
+                <>
+                  {/* ── SINGLES: 2 rows with stroke indicators ── */}
+                  {/* KEV */}
+                  <tr style={{ background: '#eef3ff' }}>
+                    <td style={{ ...tdLeft, color: KEV_COLOR, fontWeight: 700 }}>
+                      <div>{match.kevPlayer}</div>
+                      <div style={{ fontSize: 8, color: '#888' }}>{match.kevStrokes > 0 ? `+${match.kevStrokes} strokes` : 'scratch'}</div>
+                    </td>
+                    {COURSE.par.map((par, i) => {
+                      const val = local.kev[i];
+                      const num = val === '' ? null : parseInt(val, 10);
+                      const netNum = num != null ? num - kevSingStrokes[i] : null;
+                      const hasStroke = kevSingStrokes[i] > 0;
+                      const bg = num != null ? scoreColor(netNum, par) : '#fff';
+                      const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                      return (
+                        <td key={i} style={{ padding: '3px 1px', textAlign: 'center', background: bg, borderBottom: hasStroke ? `2px solid ${KEV_COLOR}` : undefined }}>
+                          {hasStroke && <div style={{ fontSize: 7, fontWeight: 900, color: num != null ? textCol : KEV_COLOR, lineHeight: 1 }}>+1</div>}
+                          <input
+                            type="number" min="1" max="15"
+                            value={val}
+                            onChange={e => set('kev', i, e.target.value)}
+                            inputMode="numeric"
+                            style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${KEV_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield', display: 'block', margin: '0 auto' }}
+                          />
+                          <div style={{ fontSize: 8, color: textCol, opacity: 0.85, marginTop: 1 }}>
+                            {num != null ? scoreLabel(netNum, par) : ''}
+                          </div>
+                          {hasStroke && num != null && <div style={{ fontSize: 7, color: textCol, fontWeight: 700 }}>net {netNum}</div>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {/* G */}
+                  <tr style={{ background: '#edf7ee' }}>
+                    <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 700 }}>
+                      <div>{match.gPlayer}</div>
+                      <div style={{ fontSize: 8, color: '#888' }}>{match.gStrokes > 0 ? `+${match.gStrokes} strokes` : 'scratch'}</div>
+                    </td>
+                    {COURSE.par.map((par, i) => {
+                      const val = local.g[i];
+                      const num = val === '' ? null : parseInt(val, 10);
+                      const netNum = num != null ? num - gSingStrokes[i] : null;
+                      const hasStroke = gSingStrokes[i] > 0;
+                      const bg = num != null ? scoreColor(netNum, par) : '#fff';
+                      const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                      return (
+                        <td key={i} style={{ padding: '3px 1px', textAlign: 'center', background: bg, borderBottom: hasStroke ? `2px solid ${G_COLOR}` : undefined }}>
+                          {hasStroke && <div style={{ fontSize: 7, fontWeight: 900, color: num != null ? textCol : G_COLOR, lineHeight: 1 }}>+1</div>}
+                          <input
+                            type="number" min="1" max="15"
+                            value={val}
+                            onChange={e => set('g', i, e.target.value)}
+                            inputMode="numeric"
+                            style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${G_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield', display: 'block', margin: '0 auto' }}
+                          />
+                          <div style={{ fontSize: 8, color: textCol, opacity: 0.85, marginTop: 1 }}>
+                            {num != null ? scoreLabel(netNum, par) : ''}
+                          </div>
+                          {hasStroke && num != null && <div style={{ fontSize: 7, color: textCol, fontWeight: 700 }}>net {netNum}</div>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </>
+              )}
               {/* Hole result row */}
               <tr style={{ background: '#fafafa' }}>
                 <td style={{ ...tdLeft, color: '#888', fontSize: 9 }}>Result</td>
@@ -781,7 +880,7 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
                     {r === 'kev' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: KEV_COLOR, margin: '0 auto' }} />}
                     {r === 'g'   && <div style={{ width: 10, height: 10, borderRadius: '50%', background: G_COLOR,   margin: '0 auto' }} />}
                     {r === 'halved' && <div style={{ width: 10, height: 3, background: '#ccc', borderRadius: 2, margin: '0 auto' }} />}
-                    {r === null && <span style={{ color: '#ddd', fontSize: 9 }}>—</span>}
+                    {r === null  && <span style={{ color: '#ddd', fontSize: 9 }}>—</span>}
                   </td>
                 ))}
               </tr>
