@@ -955,9 +955,11 @@ function BestBallCard({ match, scores, onTap }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', minWidth: 70 }}>
-          <div style={S.matchStanding(leader)}>
-            {result.txt}
-          </div>
+          {result.holesPlayed > 0 && (
+            <div style={S.matchStanding(leader)}>
+              {result.txt}
+            </div>
+          )}
           <button
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
             onClick={() => onTap(match)}
@@ -1013,7 +1015,9 @@ function SinglesCard({ match, scores, onTap }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', minWidth: 70 }}>
-          <div style={S.matchStanding(leader)}>{result.txt}</div>
+          {result.holesPlayed > 0 && (
+            <div style={S.matchStanding(leader)}>{result.txt}</div>
+          )}
           <button
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
             onClick={() => onTap(match)}
