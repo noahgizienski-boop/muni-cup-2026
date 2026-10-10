@@ -1090,6 +1090,15 @@ export default function App() {
     });
   };
 
+  // ── Reset all scores ──────────────────────────────────
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const handleReset = async () => {
+    const { error } = await supabase.from('scores').delete().neq('match_id', '__none__');
+    if (error) { console.error(error); alert('Reset failed: ' + error.message); return; }
+    setScores({});
+    setResetConfirm(false);
+  };
+
   // ── Compute totals ─────────────────────────────────────
   const safeScores = scores || {};
   const bbResults  = BEST_BALL.map(m => computeBestBallMatch(m, safeScores));
@@ -1342,6 +1351,36 @@ export default function App() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Reset All Scores button */}
+          <div style={{ marginTop: 28, paddingBottom: 16 }}>
+            <button
+              onClick={() => setResetConfirm(true)}
+              style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid #c0392b', background: 'transparent', color: '#c0392b', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase' }}
+            >
+              🗑 Reset All Scores
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset confirmation modal ─────────────────────── */}
+      {resetConfirm && (
+        <div style={S.overlay} onClick={() => setResetConfirm(false)}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+               onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: '#222', marginBottom: 8 }}>Reset All Scores?</div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This will permanently delete every score entered. This cannot be undone.</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setResetConfirm(false)} style={{ flex: 1, padding: '11px', borderRadius: 8, border: '1.5px solid #ddd', background: '#f5f5f5', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#444' }}>
+                Cancel
+              </button>
+              <button onClick={handleReset} style={{ flex: 1, padding: '11px', borderRadius: 8, border: 'none', background: '#c0392b', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>
+                Yes, Reset
+              </button>
+            </div>
           </div>
         </div>
       )}
