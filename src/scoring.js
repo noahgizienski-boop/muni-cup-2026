@@ -1,4 +1,4 @@
-import { COURSE, getStrokesPerHole } from './data';
+import { getStrokesPerHole } from './data';
 
 export function computeBestBallMatch(match, scores) {
   if (!match || !scores) return { kevUp: 0, status: 'live', holesPlayed: 0, leader: null, txt: 'AS' };
