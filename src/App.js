@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
-import { COURSE, BEST_BALL, SINGLES, TEAMS, getStrokesPerHole } from './data';
+import { COURSE, BEST_BALL, SINGLES , getStrokesPerHole } from './data';
 import { computeBestBallMatch, computeSinglesMatch, matchPoints, scoreColor } from './scoring';
 
 const KEV_COLOR  = '#1a4fa0';
