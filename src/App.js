@@ -755,7 +755,6 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
                     </td>
                   </tr>
                   {match.g.map((player, pi) => {
-                    const strokesArr = gPlayersStrokes[pi];
                     return (
                       <tr key={player.name} style={{ background: pi === 0 ? '#edf7ee' : '#e4f2e7' }}>
                         <td style={{ ...tdLeft, color: G_COLOR }}>
@@ -763,8 +762,7 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
                           <div style={{ fontSize: 8, color: '#888' }}>{player.strokes > 0 ? `+${player.strokes} strokes` : 'scratch'}</div>
                         </td>
                         {COURSE.par.map((par, i) => {
-                          const strokesArr2 = gPlayersStrokes[pi];
-                          const hasStroke = strokesArr2[i] > 0;
+                          const hasStroke = gPlayersStrokes[pi][i] > 0;
                           return (
                             <td key={i} style={{ padding: '2px 1px', textAlign: 'center', background: hasStroke ? `${G_COLOR}18` : undefined, borderBottom: hasStroke ? `2px solid ${G_COLOR}` : undefined }}>
                               {hasStroke && (
