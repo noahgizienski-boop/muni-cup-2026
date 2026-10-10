@@ -1084,11 +1084,17 @@ export default function App() {
   // ── Reset all scores ──────────────────────────────────
   const [resetConfirm, setResetConfirm] = useState(false);
   const handleReset = async () => {
-    const { error } = await supabase.from('scores').delete().neq('match_id', '__none__');
+    const allMatchIds = [
+      ...BEST_BALL.map(m => m.id),
+      ...SINGLES.map(m => m.id),
+    ];
+    const { error } = await supabase
+      .from('scores')
+      .delete()
+      .in('match_id', allMatchIds);
     if (error) { console.error(error); alert('Reset failed: ' + error.message); return; }
     setScores({});
     setResetConfirm(false);
-    // Re-fetch from DB to confirm it's actually empty
     await loadScores();
   };
 
@@ -1404,3 +1410,5 @@ export default function App() {
     </div>
   );
 }
+
+                
