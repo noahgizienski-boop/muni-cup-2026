@@ -312,9 +312,10 @@ const S = {
     background: '#fff',
     borderRadius: 14,
     width: '100%',
-    maxWidth: 420,
-    maxHeight: '90vh',
-    overflow: 'auto',
+    maxWidth: 520,
+    maxHeight: '92vh',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
   },
   modalHeader: {
@@ -522,6 +523,36 @@ function HoleStrip({ matchId, scores, par, kevStrokesArr, gStrokesArr }) {
   );
 }
 
+// ── Table cell styles ────────────────────────────────────
+const tdLeft = {
+  padding: '5px 10px',
+  fontWeight: 700,
+  fontSize: 10,
+  color: '#555',
+  letterSpacing: 0.5,
+  whiteSpace: 'nowrap',
+  borderRight: '1px solid #e0e0e0',
+  minWidth: 60,
+};
+const tdCenter = {
+  padding: '4px 2px',
+  textAlign: 'center',
+  borderRight: '1px solid #e8e8e8',
+  minWidth: 32,
+};
+
+// ── Score label (vs par) ─────────────────────────────────
+function scoreLabel(score, par) {
+  if (score == null) return '';
+  const d = score - par;
+  if (d <= -2) return 'Eagle+';
+  if (d === -1) return 'Birdie';
+  if (d === 0)  return 'E';
+  if (d === 1)  return '+1';
+  if (d === 2)  return '+2';
+  return `+${d}`;
+}
+
 // ── Score Entry Modal ────────────────────────────────────
 function ScoreModal({ match, matchType, scores, onSave, onClose }) {
   const [local, setLocal] = useState(() => {
@@ -556,88 +587,236 @@ function ScoreModal({ match, matchType, scores, onSave, onClose }) {
     ? `${match.g[0].name} & ${match.g[1].name}`
     : match.gPlayer;
 
-  // Strokes per hole display for singles
-  const kevStrokesArr = isBB ? null : getStrokesPerHole(match.kevStrokes);
-  const gStrokesArr   = isBB ? null : getStrokesPerHole(match.gStrokes);
+  // Per-player strokes for BB; per-player arrays for singles
+  const kevPlayersStrokes = isBB ? match.kev.map(p => getStrokesPerHole(p.strokes)) : null;
+  const gPlayersStrokes   = isBB ? match.g.map(p => getStrokesPerHole(p.strokes))   : null;
+  const kevSingStrokes    = isBB ? null : getStrokesPerHole(match.kevStrokes);
+  const gSingStrokes      = isBB ? null : getStrokesPerHole(match.gStrokes);
+
+  // Compute running match play state for momentum
+  const momentum = [];
+  let kevUp = 0;
+  for (let h = 0; h < 18; h++) {
+    const ksRaw = local.kev[h] === '' ? null : parseInt(local.kev[h], 10);
+    const gsRaw = local.g[h]   === '' ? null : parseInt(local.g[h],   10);
+    if (ksRaw == null || gsRaw == null) { momentum.push(null); continue; }
+    let ksNet = ksRaw, gsNet = gsRaw;
+    if (!isBB) {
+      ksNet = ksRaw - kevSingStrokes[h];
+      gsNet = gsRaw - gSingStrokes[h];
+    }
+    if (ksNet < gsNet) kevUp++;
+    else if (gsNet < ksNet) kevUp--;
+    momentum.push(kevUp);
+  }
+  const maxMom = Math.max(...momentum.filter(v => v != null).map(Math.abs), 1);
+
+  // Hole current result label
+  const holeResults = COURSE.par.map((par, h) => {
+    const ksRaw = local.kev[h] === '' ? null : parseInt(local.kev[h], 10);
+    const gsRaw = local.g[h]   === '' ? null : parseInt(local.g[h],   10);
+    if (ksRaw == null || gsRaw == null) return null;
+    let ksNet = ksRaw, gsNet = gsRaw;
+    if (!isBB) {
+      ksNet = ksRaw - kevSingStrokes[h];
+      gsNet = gsRaw - gSingStrokes[h];
+    }
+    if (ksNet < gsNet) return 'kev';
+    if (gsNet < ksNet) return 'g';
+    return 'halved';
+  });
 
   return (
     <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={S.modal}>
-        <div style={S.modalHeader}>
-          <div style={S.modalTitle}>ENTER SCORES</div>
-          <button style={S.closeBtn} onClick={onClose}>✕</button>
-        </div>
-        {/* Players header */}
-        <div style={{ display: 'flex', padding: '10px 12px 6px', gap: 8 }}>
-          <div style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: KEV_COLOR, letterSpacing: 1 }}>TEAM KEV</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{kevName}</div>
-          </div>
-          <div style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: G_COLOR, letterSpacing: 1 }}>TEAM G</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>{gName}</div>
-          </div>
-        </div>
-        <div style={S.scoreTable}>
-          <div style={S.scoreHeaderRow}>
-            <div style={S.th}>H</div>
-            <div style={S.th}>Par</div>
-            <div style={{ ...S.th, color: KEV_COLOR }}>Kev</div>
-            <div style={{ ...S.th, color: KEV_COLOR, fontSize: 8 }}>{isBB ? 'BB' : 'Net'}</div>
-            <div style={{ ...S.th, color: G_COLOR }}>G</div>
-            <div style={{ ...S.th, color: G_COLOR, fontSize: 8 }}>{isBB ? 'BB' : 'Net'}</div>
-          </div>
-          {COURSE.par.map((par, i) => {
-            const ks = local.kev[i];
-            const gs = local.g[i];
-            const ksN = ks === '' ? null : parseInt(ks, 10);
-            const gsN = gs === '' ? null : parseInt(gs, 10);
-            const kevNetVal = isBB ? ksN : (ksN != null ? ksN - kevStrokesArr[i] : null);
-            const gNetVal   = isBB ? gsN : (gsN != null ? gsN - gStrokesArr[i] : null);
-            return (
-              <div key={i} style={S.scoreRow}>
-                <div style={S.holeNum}>{i + 1}</div>
-                <div style={S.parNum}>{par}</div>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={ks}
-                  onChange={e => set('kev', i, e.target.value)}
-                  style={S.scoreInput(KEV_COLOR)}
-                  inputMode="numeric"
-                />
-                <div style={{
-                  fontSize: 12,
-                  textAlign: 'center',
-                  color: kevNetVal != null ? (kevNetVal < par ? '#1a6b3c' : kevNetVal > par ? '#e53935' : '#555') : '#ccc',
-                  fontWeight: 700,
-                }}>
-                  {kevNetVal != null ? kevNetVal : '—'}
-                  {!isBB && kevStrokesArr[i] > 0 && <span style={{ fontSize: 8, color: '#aaa' }}>{' '}(-{kevStrokesArr[i]})</span>}
-                </div>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={gs}
-                  onChange={e => set('g', i, e.target.value)}
-                  style={S.scoreInput(G_COLOR)}
-                  inputMode="numeric"
-                />
-                <div style={{
-                  fontSize: 12,
-                  textAlign: 'center',
-                  color: gNetVal != null ? (gNetVal < par ? '#1a6b3c' : gNetVal > par ? '#e53935' : '#555') : '#ccc',
-                  fontWeight: 700,
-                }}>
-                  {gNetVal != null ? gNetVal : '—'}
-                  {!isBB && gStrokesArr[i] > 0 && <span style={{ fontSize: 8, color: '#aaa' }}>{' '}(-{gStrokesArr[i]})</span>}
-                </div>
+        {/* ── Modal header band ── */}
+        <div style={{ background: DARK_GREEN, padding: '10px 14px 8px', borderRadius: '14px 14px 0 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div>
+              <div style={{ color: GOLD, fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
+                {isBB ? 'Best Ball' : 'Singles'} · Turtle Creek GC
               </div>
-            );
-          })}
+              <div style={{ color: '#fff', fontSize: 15, fontWeight: 900, letterSpacing: 1 }}>
+                {isBB ? `Group ${match.group}` : (match.id || '').toUpperCase()}
+              </div>
+            </div>
+            <button style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 20, width: 30, height: 30, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>✕</button>
+          </div>
+          {/* Team boxes */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, background: `${KEV_COLOR}33`, border: `1.5px solid ${KEV_COLOR}`, borderRadius: 8, padding: '6px 10px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: KEV_COLOR, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>■ Team Kev</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{kevName}</div>
+              {isBB && <div style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>
+                {match.kev.map(p => p.strokes > 0 ? `${p.name} +${p.strokes}` : `${p.name} scratch`).join(' · ')}
+              </div>}
+              {!isBB && match.kevStrokes > 0 && <div style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>+{match.kevStrokes} strokes</div>}
+            </div>
+            <div style={{ flex: 1, background: `${G_COLOR}33`, border: `1.5px solid ${G_COLOR}`, borderRadius: 8, padding: '6px 10px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>■ Team G</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{gName}</div>
+              {isBB && <div style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>
+                {match.g.map(p => p.strokes > 0 ? `${p.name} +${p.strokes}` : `${p.name} scratch`).join(' · ')}
+              </div>}
+              {!isBB && match.gStrokes > 0 && <div style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>+{match.gStrokes} strokes</div>}
+            </div>
+          </div>
         </div>
+
+        {/* ── Scorecard table (horizontal scroll) ── */}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 680, width: '100%', fontSize: 11 }}>
+            <thead>
+              <tr style={{ background: '#f7f4ee' }}>
+                <td style={tdLeft}>Hole</td>
+                {COURSE.par.map((_, i) => (
+                  <td key={i} style={{ ...tdCenter, background: i === 8 ? '#eee' : undefined, fontWeight: 700, color: '#444', fontSize: 10, position: 'relative' }}>
+                    {i + 1}
+                    {/* Stroke dot indicators */}
+                    {isBB && (() => {
+                      const kevDots = (kevPlayersStrokes || []).filter(arr => arr[i] > 0).length;
+                      const gDots   = (gPlayersStrokes   || []).filter(arr => arr[i] > 0).length;
+                      return (kevDots > 0 || gDots > 0) ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
+                          {[...Array(kevDots)].map((_, d) => <div key={`k${d}`} style={{ width: 5, height: 5, borderRadius: '50%', background: KEV_COLOR }} />)}
+                          {[...Array(gDots)].map((_, d) => <div key={`g${d}`} style={{ width: 5, height: 5, borderRadius: '50%', background: G_COLOR }} />)}
+                        </div>
+                      ) : null;
+                    })()}
+                    {!isBB && (() => {
+                      const ks = kevSingStrokes[i]; const gs = gSingStrokes[i];
+                      return (ks > 0 || gs > 0) ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
+                          {ks > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: KEV_COLOR }} />}
+                          {gs > 0 && <div style={{ width: 5, height: 5, borderRadius: '50%', background: G_COLOR }} />}
+                        </div>
+                      ) : null;
+                    })()}
+                  </td>
+                ))}
+              </tr>
+              <tr style={{ background: '#f7f4ee' }}>
+                <td style={tdLeft}>Yards</td>
+                {COURSE.yards.map((y, i) => <td key={i} style={{ ...tdCenter, color: '#999', fontSize: 9 }}>{y}</td>)}
+              </tr>
+              <tr style={{ background: '#f7f4ee' }}>
+                <td style={tdLeft}>Hdcp</td>
+                {COURSE.handicap.map((h, i) => <td key={i} style={{ ...tdCenter, color: '#999', fontSize: 9 }}>{h}</td>)}
+              </tr>
+              <tr style={{ background: '#e8f0e8' }}>
+                <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 700 }}>Par</td>
+                {COURSE.par.map((p, i) => <td key={i} style={{ ...tdCenter, color: G_COLOR, fontWeight: 700 }}>{p}</td>)}
+              </tr>
+            </thead>
+            <tbody>
+              {/* KEV score row */}
+              <tr style={{ background: '#eef3ff' }}>
+                <td style={{ ...tdLeft, color: KEV_COLOR, fontWeight: 700 }}>
+                  {isBB ? 'Kev' : match.kevPlayer.split(' ')[0]}
+                  {!isBB && match.kevStrokes > 0 && <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}> +{match.kevStrokes}</span>}
+                </td>
+                {COURSE.par.map((par, i) => {
+                  const val = local.kev[i];
+                  const num = val === '' ? null : parseInt(val, 10);
+                  const netNum = (!isBB && num != null) ? num - kevSingStrokes[i] : num;
+                  const hasStroke = !isBB && kevSingStrokes[i] > 0;
+                  const bg = num != null ? scoreColor(netNum, par) : '#fff';
+                  const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                  return (
+                    <td key={i} style={{ padding: '3px 2px', textAlign: 'center', background: bg }}>
+                      <input
+                        type="number" min="1" max="15"
+                        value={val}
+                        onChange={e => set('kev', i, e.target.value)}
+                        inputMode="numeric"
+                        style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${KEV_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                      />
+                      <div style={{ fontSize: 8, color: textCol, opacity: 0.8, marginTop: 1 }}>
+                        {num != null ? scoreLabel(netNum, par) : ''}
+                      </div>
+                      {hasStroke && num != null && (
+                        <div style={{ fontSize: 7, color: KEV_COLOR, fontWeight: 700 }}>→{netNum}</div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+              {/* G score row */}
+              <tr style={{ background: '#edf7ee' }}>
+                <td style={{ ...tdLeft, color: G_COLOR, fontWeight: 700 }}>
+                  {isBB ? 'G' : match.gPlayer.split(' ')[0]}
+                  {!isBB && match.gStrokes > 0 && <span style={{ fontSize: 8, color: '#aaa', fontWeight: 400 }}> +{match.gStrokes}</span>}
+                </td>
+                {COURSE.par.map((par, i) => {
+                  const val = local.g[i];
+                  const num = val === '' ? null : parseInt(val, 10);
+                  const netNum = (!isBB && num != null) ? num - gSingStrokes[i] : num;
+                  const hasStroke = !isBB && gSingStrokes[i] > 0;
+                  const bg = num != null ? scoreColor(netNum, par) : '#fff';
+                  const textCol = bg === '#f5f0e8' || bg === 'transparent' || bg === '#fff' ? '#333' : '#fff';
+                  return (
+                    <td key={i} style={{ padding: '3px 2px', textAlign: 'center', background: bg }}>
+                      <input
+                        type="number" min="1" max="15"
+                        value={val}
+                        onChange={e => set('g', i, e.target.value)}
+                        inputMode="numeric"
+                        style={{ width: 28, height: 28, textAlign: 'center', border: `1.5px solid ${G_COLOR}44`, borderRadius: 6, fontSize: 13, fontWeight: 700, color: textCol, background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                      />
+                      <div style={{ fontSize: 8, color: textCol, opacity: 0.8, marginTop: 1 }}>
+                        {num != null ? scoreLabel(netNum, par) : ''}
+                      </div>
+                      {hasStroke && num != null && (
+                        <div style={{ fontSize: 7, color: G_COLOR, fontWeight: 700 }}>→{netNum}</div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+              {/* Hole result row */}
+              <tr style={{ background: '#fafafa' }}>
+                <td style={{ ...tdLeft, color: '#888', fontSize: 9 }}>Result</td>
+                {holeResults.map((r, i) => (
+                  <td key={i} style={{ textAlign: 'center', padding: '3px 2px' }}>
+                    {r === 'kev' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: KEV_COLOR, margin: '0 auto' }} />}
+                    {r === 'g'   && <div style={{ width: 10, height: 10, borderRadius: '50%', background: G_COLOR,   margin: '0 auto' }} />}
+                    {r === 'halved' && <div style={{ width: 10, height: 3, background: '#ccc', borderRadius: 2, margin: '0 auto' }} />}
+                    {r === null && <span style={{ color: '#ddd', fontSize: 9 }}>—</span>}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Match Momentum ── */}
+        <div style={{ padding: '12px 14px 8px', background: '#fff', borderTop: '1px solid #eee' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Match Momentum</div>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 40 }}>
+            {momentum.map((v, i) => {
+              if (v === null) return <div key={i} style={{ flex: 1, height: 4, background: '#f0f0f0', borderRadius: 2, alignSelf: 'center' }} />;
+              const pct = Math.abs(v) / maxMom;
+              const barH = Math.max(4, pct * 36);
+              const col = v > 0 ? KEV_COLOR : v < 0 ? G_COLOR : '#ccc';
+              return <div key={i} style={{ flex: 1, height: barH, background: col, borderRadius: '2px 2px 0 0', alignSelf: 'flex-end', opacity: 0.85 }} />;
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            <span style={{ fontSize: 9, color: KEV_COLOR, fontWeight: 700 }}>■ Kev leads</span>
+            <span style={{ fontSize: 9, color: G_COLOR,   fontWeight: 700 }}>G leads ■</span>
+          </div>
+        </div>
+
+        {/* ── Score legend ── */}
+        <div style={{ padding: '6px 14px 10px', background: '#fff', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {[['#FFD700','Eagle+'],['#4CAF50','Birdie'],['#f5f0e8','Par'],['#e53935','Bogey'],['#8B0000','Double+']].map(([c, lbl]) => (
+            <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#555' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: c, border: '1px solid #ddd', display: 'inline-block' }} />
+              {lbl}
+            </span>
+          ))}
+        </div>
+
         <div style={S.saveBtnWrap}>
           <button style={S.saveBtn} onClick={handleSave}>Save Scores</button>
         </div>
