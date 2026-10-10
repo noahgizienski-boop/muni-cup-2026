@@ -991,11 +991,10 @@ function BestBallCard({ match, scores, onTap }) {
 function SinglesCard({ match, scores, onTap }) {
   const result = computeSinglesMatch(match, scores);
   const leader = result.leader;
-  const isPlaceholder = match.kevPlayer.includes('Singles');
   const kevStrokesArr = getStrokesPerHole(match.kevStrokes);
   const gStrokesArr   = getStrokesPerHole(match.gStrokes);
   return (
-    <div style={{ ...S.matchCard, opacity: isPlaceholder ? 0.65 : 1 }}>
+    <div style={S.matchCard}>
       <div style={S.matchCardTop}>
         <div style={S.matchPlayers}>
           <div style={S.playerRow(KEV_COLOR)}>
@@ -1014,24 +1013,16 @@ function SinglesCard({ match, scores, onTap }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', minWidth: 70 }}>
-          {isPlaceholder ? (
-            <div style={{ color: '#bbb', fontSize: 12, fontStyle: 'italic' }}>TBD</div>
-          ) : (
-            <>
-              <div style={S.matchStanding(leader)}>{result.txt}</div>
-              <button
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                onClick={() => onTap(match)}
-              >
-                <span style={S.tapHint}>tap to score →</span>
-              </button>
-            </>
-          )}
+          <div style={S.matchStanding(leader)}>{result.txt}</div>
+          <button
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            onClick={() => onTap(match)}
+          >
+            <span style={S.tapHint}>tap to score →</span>
+          </button>
         </div>
       </div>
-      {!isPlaceholder && (
-        <HoleStrip matchId={match.id} scores={scores} par={COURSE.par} kevStrokesArr={kevStrokesArr} gStrokesArr={gStrokesArr} />
-      )}
+      <HoleStrip matchId={match.id} scores={scores} par={COURSE.par} kevStrokesArr={kevStrokesArr} gStrokesArr={gStrokesArr} />
     </div>
   );
 }
@@ -1097,6 +1088,8 @@ export default function App() {
     if (error) { console.error(error); alert('Reset failed: ' + error.message); return; }
     setScores({});
     setResetConfirm(false);
+    // Re-fetch from DB to confirm it's actually empty
+    await loadScores();
   };
 
   // ── Compute totals ─────────────────────────────────────
@@ -1230,11 +1223,6 @@ export default function App() {
               <div style={S.sectionSub}>Turtle Creek · 18 Holes · Afternoon Round</div>
             </div>
             <div style={S.sectionScore}>{fmt(sKev)} – {fmt(sG)}</div>
-          </div>
-          <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}66`, borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
-            <p style={{ margin: 0, fontSize: 11, color: '#666', fontStyle: 'italic' }}>
-              🕐 Singles matchups will be announced on the day. Placeholders shown below.
-            </p>
           </div>
           {SINGLES.map(match => (
             <SinglesCard
